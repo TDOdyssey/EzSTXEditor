@@ -5,5 +5,6 @@
 
 void editor_draw();
 void drop_callback(GLFWwindow* window, int count, const char** paths);
+void editor_cleanup();
 
 #endif

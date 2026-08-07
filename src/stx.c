@@ -183,6 +183,9 @@ void stx_save(STXFile *file, const char *filename)
 
 void stx_free(STXFile *file)
 {
+    if(!file)
+        return;
+
     for(int i = 0; i < file->string_count; i++)
         free(file->strings[i]);
 

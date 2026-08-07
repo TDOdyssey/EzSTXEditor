@@ -30,6 +30,13 @@ int main()
 
     ImGui::CreateContext();
 
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.FontGlobalScale = 1.5f;
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.ScaleAllSizes(1.5f);
+
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
@@ -42,8 +49,6 @@ int main()
         ImGui::NewFrame();
 
         editor_draw();
-
-        ImGui::End();
 
         ImGui::Render();
 
@@ -68,6 +73,8 @@ int main()
 
     glfwDestroyWindow(window);
     glfwTerminate();
+
+    editor_cleanup();
 
     return 0;
 }
