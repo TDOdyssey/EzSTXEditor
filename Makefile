@@ -4,14 +4,13 @@ CC = gcc
 CXXFLAGS = -std=c++17 -Wall -Iimgui -Iimgui/backends -Isrc -D__USE_MINGW_ANSI_STDIO=0
 CFLAGS = -Wall -Isrc
 
-LDFLAGS = -lglfw3 -lopengl32 -lgdi32 -lcomdlg32
+LDFLAGS = -lglfw3 -lopengl32 -lgdi32 -lcomdlg32 -static-libstdc++
 
 TARGET = bin/eztt_gui
 
 CPP_SOURCES = \
 	src/main.cpp \
 	src/editor.cpp \
-	src/editor.h \
 	imgui/imgui.cpp \
 	imgui/imgui_draw.cpp \
 	imgui/imgui_tables.cpp \

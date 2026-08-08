@@ -11,6 +11,7 @@
 #include <commdlg.h>
 
 #include <string>
+#include <vector>
 
 typedef struct EditorTab_s
 {
@@ -19,6 +20,8 @@ typedef struct EditorTab_s
     int loaded_id = -1;
     char filename[MAX_PATH] = "\0";
     bool modified = false;
+
+    bool set_selected = false;
 
     uint32_t id = 0; // imgui internal id
 
@@ -29,6 +32,84 @@ static EditorTab *head = NULL;
 static uint32_t next_id = 0; // stable id so that imgui doesn't get fucked up with labels
 
 static char edit_buffer[4096];
+
+typedef struct
+{
+    EditorTab *tab;
+    int string_id;
+} SearchResult;
+
+std::vector<SearchResult> search_results;
+void perform_search(const char *query)
+{
+    search_results.clear();
+
+    if(query[0] == '\0')
+        return;
+    
+    for(EditorTab *tab = head; tab; tab = tab->next)
+    {
+        if(!tab->file)
+            continue;
+        
+        for(int i = 0; i < tab->file->string_count; i++)
+        {
+            char utf8[8192];
+
+            WideCharToMultiByte(
+                CP_UTF8,
+                0,
+                tab->file->strings[i],
+                -1,
+                utf8,
+                sizeof(utf8),
+                NULL,
+                NULL
+            );
+
+            if(strstr(utf8, query))
+            {
+                SearchResult result;
+                result.tab = tab;
+                result.string_id = i;
+
+                search_results.push_back(result);
+            }
+        }
+    }
+}
+
+static char search_buffer[256];
+
+void draw_search()
+{
+    ImGui::InputText("Search", search_buffer, sizeof(search_buffer));
+
+    if(ImGui::Button("Find"))
+        perform_search(search_buffer);
+
+    for(auto& result : search_results)
+    {
+        std::string filename_without_path = result.tab->filename;
+        filename_without_path = filename_without_path.substr(filename_without_path.find_last_of("/\\") + 1);
+
+        char label[512];
+
+        snprintf(
+            label,
+            sizeof(label),
+            "[%d] %s",
+            result.string_id,
+            filename_without_path.c_str()
+        );
+
+        if(ImGui::Selectable(label))
+        {
+            result.tab->selected = result.string_id;
+            result.tab->set_selected = true;
+        }
+    }
+}
 
 void draw_dialogue_list(EditorTab *tab);
 
@@ -82,6 +163,8 @@ void draw_tab(EditorTab *tab)
             if(tab->file)
                 stx_free(tab->file);
             tab->file = stx_load(tab->filename);
+
+            tab->set_selected = true;
         }
     }
 
@@ -139,15 +222,16 @@ void draw_tabs()
         EditorTab *prev = NULL;
         while(cursor != NULL)
         {
-            ImGuiTabItemFlags flags = (cursor->modified ? ImGuiTabItemFlags_UnsavedDocument : 0);
-            bool open = true;
+            ImGuiTabItemFlags flags = (cursor->modified ? ImGuiTabItemFlags_UnsavedDocument : 0) | (cursor->set_selected ? ImGuiTabItemFlags_SetSelected : 0);
+            cursor->set_selected = false;
 
+            bool open = true;
             char label[512];
 
             std::string filename_without_path = cursor->filename;
             filename_without_path = filename_without_path.substr(filename_without_path.find_last_of("/\\") + 1);
 
-            sprintf(label, "%s##%u", cursor->file ? filename_without_path.c_str() : "Empty", cursor->id);
+            snprintf(label, sizeof(label), "%s##%u", cursor->file ? filename_without_path.c_str() : "Empty", cursor->id);
             //sprintf(label, "%s##%u", cursor->file ? filename_without_path.c_str() : "Empty", cursor->id);
             //sprintf(label, "##%u", cursor->id);
             if(ImGui::BeginTabItem(label , &open, flags))
@@ -235,8 +319,23 @@ void editor_draw()
 
     ImGui::Begin("Main", nullptr, flags);
 
+    float search_height = 200.0f;
+
+    ImGui::BeginChild("EditorArea", ImVec2(0, -search_height));
+
     draw_tabs();
 
+    ImGui::EndChild();
+
+    ImGui::BeginChild(
+        "SearchResults",
+        ImVec2(0, search_height),
+        true
+    );
+
+    draw_search();
+
+    ImGui::EndChild();
     ImGui::End();
 }
 
